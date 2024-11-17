@@ -182,7 +182,7 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(
-    docs_url="/docs" if ENV == "dev" else None, redoc_url=None, lifespan=lifespan
+    docs_url="/docs" if ENV == "dev" else None, openapi_url="/openapi.json" if ENV == "dev" else None, redoc_url=None, lifespan=lifespan
 )
 
 app.state.config = AppConfig()
@@ -439,10 +439,17 @@ async def chat_completion_tools_handler(
             tool_function_params = result.get("parameters", {})
 
             try:
+                required_params = (
+                    tools[tool_function_name]
+                    .get("spec", {})
+                    .get("parameters", {})
+                    .get("required", [])
+                )
                 tool_function = tools[tool_function_name]["callable"]
-                sig = inspect.signature(tool_function)
                 tool_function_params = {
-                    k: v for k, v in tool_function_params.items() if k in sig.parameters
+                    k: v
+                    for k, v in tool_function_params.items()
+                    if k in required_params
                 }
                 tool_output = await tool_function(**tool_function_params)
 
